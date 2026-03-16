@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+
+# Flask
+instance/
+.webassets-cache
+
+# Uploaded files (keep folder structure, ignore contents)
+project/static/disaster_proofs/*
+!project/static/disaster_proofs/.gitkeep
+
+# Data files (JSON runtime data – exclude to avoid committing sensitive data)
+# Comment these out if you WANT to commit sample data
+# project/camps.json
+# project/victims.json
+# project/responders.json
+# project/requests.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# VS Code
+.vscode/
+
+# Misc
+*.log
+*.tmp
+New Text Document.txt

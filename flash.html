@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SWF Player</title>
+  <style>
+    :root {
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 0;
+      background: #f6f7f9;
+      color: #111;
+    }
+    header {
+      padding: 20px 16px 10px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    h1 { margin: 0; font-size: 22px; font-weight: 700; }
+    .sub { margin: 6px 0 0; color: #444; font-size: 14px; }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 16px 20px;
+    }
+    .panel {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .controls {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 760px) {
+      .controls { grid-template-columns: 1fr 1fr; }
+    }
+    .field {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    label { font-size: 13px; color: #333; }
+    input[type="text"] {
+      flex: 1;
+      min-width: 220px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      outline: none;
+    }
+    input[type="text"]:focus { border-color: #9ca3af; }
+    input[type="file"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px dashed #d1d5db;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+    button {
+      padding: 10px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      background: #111;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(0.95); }
+    .hint { margin: 6px 0 0; color: #555; font-size: 12px; }
+
+    #playerWrap { margin-top: 12px; }
+    #player {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: #0b0f18;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+    }
+    footer {
+      margin-top: 10px;
+      color: #555;
+      font-size: 12px;
+    }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SWF Player</h1>
+    <p class="sub">Plays <code>.swf</code> files using Ruffle (Flash emulator) in modern browsers.</p>
+  </header>
+
+  <main>
+    <section class="panel" aria-label="Controls">
+      <div class="controls">
+        <div>
+          <div class="field">
+            <label for="swfName"><strong>Load by filename</strong></label>
+            <input id="swfName" type="text" value="movie.swf" aria-label="SWF filename" />
+            <button id="loadByName" type="button">Load</button>
+          </div>
+          <p class="hint">Put the SWF in the same folder as this page (e.g., <code>movie.swf</code>).</p>
+        </div>
+
+        <div>
+          <label for="swfFile"><strong>Or choose a SWF file</strong></label>
+          <input id="swfFile" type="file" accept=".swf" />
+          <p class="hint">If filename loading fails, use a local server: <code>python -m http.server 8000</code></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="playerWrap" class="panel" aria-label="Player">
+      <div id="player" aria-label="Ruffle SWF Player"></div>
+      <footer>
+        Some SWFs (especially complex AS3) may not fully work yet.
+      </footer>
+    </section>
+  </main>
+
+  <!-- Ruffle: Flash emulator (no Flash plugin needed) -->
+  <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+  <script>
+    const playerHost = document.getElementById('player');
+    const swfNameInput = document.getElementById('swfName');
+    const loadByNameBtn = document.getElementById('loadByName');
+    const swfFileInput = document.getElementById('swfFile');
+
+    let rufflePlayer = null;
+
+    function ensurePlayer() {
+      // Create a fresh player each time to avoid state issues.
+      playerHost.innerHTML = '';
+
+      const ruffle = window.RufflePlayer?.newest();
+      if (!ruffle) {
+        playerHost.textContent = 'Ruffle failed to load. Check your internet connection.';
+        return null;
+      }
+      const player = ruffle.createPlayer();
+      player.style.width = '100%';
+      player.style.height = '100%';
+      playerHost.appendChild(player);
+      return player;
+    }
+
+    async function loadByName() {
+      const name = swfNameInput.value.trim();
+      if (!name) {
+        alert('Enter a SWF filename (e.g., movie.swf).');
+        return;
+      }
+      rufflePlayer = ensurePlayer();
+      if (!rufflePlayer) return;
+
+      try {
+        await rufflePlayer.load(name);
+      } catch (err) {
+        console.error(err);
+        alert('Could not load SWF by name. Try the file picker or run a local server (python -m http.server 8000).');
+      }
+    }
+
+    function loadFromFile(file) {
+      if (!file) return;
+      rufflePlayer = ensurePlayer();
+      if (!rufflePlayer) return;
+
+      const url = URL.createObjectURL(file);
+      rufflePlayer.load(url);
+    }
+
+    loadByNameBtn.addEventListener('click', loadByName);
+    swfFileInput.addEventListener('change', (e) => loadFromFile(e.target.files?.[0]));
+
+    // Try auto-loading movie.swf on first open.
+    window.addEventListener('load', () => {
+      loadByName();
+    });
+  </script>
+</body>
+</html>

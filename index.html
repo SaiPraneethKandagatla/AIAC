@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Apartment Maintenance Billing System</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f2f4f7;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+.section {
+    background-color: #ffffff;
+    padding: 20px;
+    margin: 20px auto;
+    width: 500px;
+    border-radius: 8px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.1);
+}
+
+h2 {
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 5px;
+    color: #444;
+}
+
+label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+input, select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+}
+
+button {
+    margin-top: 15px;
+    padding: 10px;
+    width: 100%;
+    border: none;
+    border-radius: 5px;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.generate {
+    background-color: #007bff;
+    color: white;
+}
+
+.paid {
+    background-color: #28a745;
+    color: white;
+}
+
+.unpaid {
+    background-color: #dc3545;
+    color: white;
+}
+
+.report {
+    background-color: #6c757d;
+    color: white;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Resident Maintenance Billing & Service Management System</h1>
+
+<!-- STEP 1: RESIDENT DETAILS -->
+<form action="#bill">
+<div class="section">
+<h2>Step 1: Resident Details (Resident Class)</h2>
+
+<label>Flat Number</label>
+<input type="text" required>
+
+<label>Resident Name</label>
+<input type="text" required>
+
+<label>Apartment Type</label>
+<select required>
+    <option>1BHK</option>
+    <option>2BHK</option>
+    <option>3BHK</option>
+</select>
+
+<label>Number of Family Members</label>
+<input type="number" required>
+
+<label>Parking Slot</label>
+<select required>
+    <option>Yes</option>
+    <option>No</option>
+</select>
+
+<label>Water Usage Units</label>
+<input type="number" required>
+
+<label>Electricity Usage Units</label>
+<input type="number" required>
+
+<label>Additional Facilities</label>
+<input type="checkbox"> Gym <br>
+<input type="checkbox"> Swimming Pool
+
+<button type="submit" class="generate">Generate Bill</button>
+</div>
+</form>
+
+<!-- STEP 2: BILL CALCULATION -->
+<div class="section" id="bill">
+<h2>Step 2: Maintenance Bill Calculation (Maintenance Calculator)</h2>
+
+<p>• Base maintenance depends on apartment type</p>
+<p>• Water charges increase with higher usage</p>
+<p>• Electricity charges are calculated slab-wise</p>
+<p>• Parking and facility charges are added if selected</p>
+<p>• Discounts applied for senior citizens and early payments</p>
+
+<p><strong>Total Monthly Bill:</strong> ₹ ________</p>
+</div>
+
+<!-- STEP 3: PAYMENT STATUS -->
+<div class="section">
+<h2>Step 3: Payment Status</h2>
+
+<p><strong>Status:</strong> Unpaid</p>
+
+<button class="paid">Mark as Paid</button>
+<button class="unpaid">Mark as Unpaid</button>
+
+<p>Pending payments are added to the warning list.</p>
+</div>
+
+<!-- STEP 4: APARTMENT MANAGEMENT REPORT -->
+<div class="section">
+<h2>Step 4: Monthly Summary Report (Apartment Management)</h2>
+
+<p>Total Revenue Collected: ₹ ________</p>
+<p>Number of Unpaid Residents: ________</p>
+<p>Highest Bill Amount: ₹ ________</p>
+
+<button class="report">Generate Monthly Report</button>
+</div>
+
+</body>
+</html>

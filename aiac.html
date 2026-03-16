@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apartment Maintenance Billing System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .form-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #764ba2;
+        }
+        
+        .report-section {
+            margin-top: 30px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .summary {
+            background: #e8f4f8;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .summary h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .summary p {
+            color: #555;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .warning-list {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .warning-list h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .warning-list ul {
+            margin-left: 20px;
+        }
+        
+        .warning-list li {
+            color: #856404;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏢 Apartment Maintenance Billing System</h1>
+        
+        <div class="form-section">
+            <h2>Add Resident</h2>
+            <form id="residentForm">
+                <div class="form-group">
+                    <label>Flat Number:</label>
+                    <input type="text" id="flatNumber" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Resident Name:</label>
+                    <input type="text" id="residentName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Apartment Type:</label>
+                    <select id="apartmentType" required>
+                        <option>1BHK</option>
+                        <option>2BHK</option>
+                        <option>3BHK</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Family Members:</label>
+                    <input type="number" id="familyMembers" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Parking Slot:</label>
+                    <input type="text" id="parkingSlot" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Water Usage (units):</label>
+                    <input type="number" id="waterUsage" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Electricity Usage (units):</label>
+                    <input type="number" id="electricityUsage" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Gym Subscription:</label>
+                    <select id="gymSubscription">
+                        <option>No</option>
+                        <option>Yes</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Swimming Pool Subscription:</label>
+                    <select id="poolSubscription">
+                        <option>No</option>
+                        <option>Yes</option>
+                    </select>
+                </div>
+                
+                <button type="submit">Add Resident</button>
+            </form>
+        </div>
+        
+        <div class="report-section">
+            <h2>Billing Report</h2>
+            <table id="billTable">
+                <thead>
+                    <tr>
+                        <th>Flat No.</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Monthly Bill</th>
+                        <th>Payment Method</th>
+                        <th>Paid On</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: #999;">No residents added yet</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="summary">
+                <h2>Summary Report</h2>
+                <p><strong>Total Revenue:</strong> ₹<span id="totalRevenue">0</span></p>
+                <p><strong>Unpaid Residents:</strong> <span id="unpaidCount">0</span></p>
+                <p><strong>Highest Bill Amount:</strong> ₹<span id="highestBill">0</span></p>
+            </div>
+            
+            <div class="warning-list">
+                <h3>⚠️ Pending Payment List</h3>
+                <ul id="warningList">
+                    <li>No pending payments</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let residents = [];
+        
+        document.getElementById('residentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const resident = {
+                flatNumber: document.getElementById('flatNumber').value,
+                name: document.getElementById('residentName').value,
+                type: document.getElementById('apartmentType').value,
+                familyMembers: parseInt(document.getElementById('familyMembers').value),
+                parking: document.getElementById('parkingSlot').value,
+                water: parseInt(document.getElementById('waterUsage').value),
+                electricity: parseInt(document.getElementById('electricityUsage').value),
+                gym: document.getElementById('gymSubscription').value === 'Yes',
+                pool: document.getElementById('poolSubscription').value === 'Yes',
+                paid: false,
+                paymentMethod: '',
+                paidOn: null,
+                scannedCode: '',
+                paymentDetails: {
+                    cardNumber: '',
+                    cardName: '',
+                    cardExpiry: '',
+                    cardCvv: '',
+                    upiUtr: '',
+                    bankName: '',
+                    bankRef: '',
+                    qrUtr: ''
+                }
+            };
+            
+            resident.bill = calculateBill(resident);
+            residents.push(resident);
+            
+            updateReport();
+            this.reset();
+        });
+        
+        function calculateBill(resident) {
+            const baseCost = {'1BHK': 3000, '2BHK': 5000, '3BHK': 7000};
+            let bill = baseCost[resident.type];
+            
+            bill += resident.water <= 10 ? resident.water * 30 : resident.water * 50;
+            bill += resident.electricity <= 100 ? resident.electricity * 8 : resident.electricity * 12;
+            bill += 500; // Parking
+            
+            if (resident.gym) bill += 500;
+            if (resident.pool) bill += 800;
+            
+            return Math.round(bill);
+        }
+        
+        function updateReport() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            if (residents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #999;">No residents added yet</td></tr>';
+                return;
+            }
+            
+            residents.forEach((resident, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${resident.flatNumber}</td>
+                        <td>${resident.name}</td>
+                        <td>${resident.type}</td>
+                        <td>₹${resident.bill}</td>
+                        <td>
+                            ${resident.paid
+                                ? (resident.paymentMethod ? formatPaidMethod(resident) : '-')
+                                : `
+                                    <select onchange="onPaymentMethodChange(${index}, this.value)">
+                                        <option value="" ${resident.paymentMethod === '' ? 'selected' : ''}>Select</option>
+                                        <option value="UPI" ${resident.paymentMethod === 'UPI' ? 'selected' : ''}>UPI</option>
+                                        <option value="Debit/Credit Card" ${resident.paymentMethod === 'Debit/Credit Card' ? 'selected' : ''}>Debit/Credit Card</option>
+                                        <option value="Net Banking" ${resident.paymentMethod === 'Net Banking' ? 'selected' : ''}>Net Banking</option>
+                                        <option value="QR" ${resident.paymentMethod === 'QR' ? 'selected' : ''}>QR</option>
+                                        <option value="Cash" ${resident.paymentMethod === 'Cash' ? 'selected' : ''}>Cash</option>
+                                    </select>
+                                    ${renderPaymentInputs(resident, index)}
+                                `
+                            }
+                        </td>
+                        <td>${resident.paidOn ? new Date(resident.paidOn).toLocaleString() : '-'}</td>
+                        <td>${resident.paid ? '✓ Paid' : '✗ Unpaid'}</td>
+                        <td>
+                            ${resident.paid
+                                ? `<button onclick="markUnpaid(${index})" style="width: 120px;">Mark Unpaid</button>`
+                                : `<button onclick="payResident(${index})" style="width: 120px;">Pay</button>`
+                            }
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            updateSummary();
+        }
+        
+        function ensurePaymentDetails(resident) {
+            if (!resident.paymentDetails) {
+                resident.paymentDetails = {
+                    cardNumber: '',
+                    cardName: '',
+                    cardExpiry: '',
+                    cardCvv: '',
+                    upiUtr: '',
+                    bankName: '',
+                    bankRef: '',
+                    qrUtr: ''
+                };
+            }
+        }
+
+        function onPaymentMethodChange(index, method) {
+            const resident = residents[index];
+            resident.paymentMethod = method;
+            ensurePaymentDetails(resident);
+            updateReport();
+        }
+
+        function setPaymentDetail(index, key, value) {
+            const resident = residents[index];
+            ensurePaymentDetails(resident);
+            resident.paymentDetails[key] = value;
+        }
+
+        function renderPaymentInputs(resident, index) {
+            ensurePaymentDetails(resident);
+
+            const method = resident.paymentMethod;
+            if (!method || method === 'Cash') return '';
+
+            if (method === 'Debit/Credit Card') {
+                return `
+                    <div style="margin-top: 10px;">
+                        <label style="margin-top: 8px;">Card Number</label>
+                        <input type="text" inputmode="numeric" placeholder="1234 5678 9012 3456" oninput="setPaymentDetail(${index}, 'cardNumber', this.value)">
+                        <label style="margin-top: 8px;">Name on Card</label>
+                        <input type="text" placeholder="Cardholder name" oninput="setPaymentDetail(${index}, 'cardName', this.value)">
+                        <label style="margin-top: 8px;">Expiry (MM/YY)</label>
+                        <input type="text" placeholder="MM/YY" oninput="setPaymentDetail(${index}, 'cardExpiry', this.value)">
+                        <label style="margin-top: 8px;">CVV</label>
+                        <input type="password" inputmode="numeric" placeholder="CVV" oninput="setPaymentDetail(${index}, 'cardCvv', this.value)">
+                    </div>
+                `;
+            }
+
+            if (method === 'UPI') {
+                return `
+                    <div style="margin-top: 10px;">
+                        <label style="margin-top: 8px;">UPI UTR / Transaction ID</label>
+                        <input type="text" placeholder="Enter UTR" oninput="setPaymentDetail(${index}, 'upiUtr', this.value)">
+                    </div>
+                `;
+            }
+
+            if (method === 'Net Banking') {
+                return `
+                    <div style="margin-top: 10px;">
+                        <label style="margin-top: 8px;">Bank Name</label>
+                        <input type="text" placeholder="Bank name" oninput="setPaymentDetail(${index}, 'bankName', this.value)">
+                        <label style="margin-top: 8px;">Reference Number</label>
+                        <input type="text" placeholder="Reference / Transaction ID" oninput="setPaymentDetail(${index}, 'bankRef', this.value)">
+                    </div>
+                `;
+            }
+
+            if (method === 'QR') {
+                const data = encodeURIComponent(`APARTMENT_MAINTENANCE|Flat:${resident.flatNumber}|Amount:${resident.bill}`);
+                return `
+                    <div style="margin-top: 10px;">
+                        <div style="margin-bottom: 8px; color: #555;">Scan this QR to pay:</div>
+                        <img alt="Payment QR" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${data}" style="display:block; margin-bottom: 10px; border-radius: 8px;">
+                        <label style="margin-top: 8px;">UTR / Transaction ID</label>
+                        <input type="text" placeholder="Enter UTR" oninput="setPaymentDetail(${index}, 'qrUtr', this.value)">
+                    </div>
+                `;
+            }
+
+            return '';
+        }
+
+        function formatPaidMethod(resident) {
+            ensurePaymentDetails(resident);
+            const method = resident.paymentMethod;
+            const d = resident.paymentDetails;
+
+            if (method === 'Debit/Credit Card') {
+                const digits = (d.cardNumber || '').replace(/\D/g, '');
+                const last4 = digits.length >= 4 ? digits.slice(-4) : '';
+                return last4 ? `Card •••• ${last4}` : 'Card';
+            }
+            if (method === 'UPI') {
+                return d.upiUtr ? `UPI (UTR: ${d.upiUtr})` : 'UPI';
+            }
+            if (method === 'Net Banking') {
+                const parts = [];
+                if (d.bankName) parts.push(d.bankName);
+                if (d.bankRef) parts.push(`REF: ${d.bankRef}`);
+                return parts.length ? `Net Banking (${parts.join(' / ')})` : 'Net Banking';
+            }
+            if (method === 'QR') {
+                return d.qrUtr ? `QR (UTR: ${d.qrUtr})` : 'QR';
+            }
+            return method;
+        }
+
+        function validatePaymentDetails(resident) {
+            ensurePaymentDetails(resident);
+            const method = resident.paymentMethod;
+            const d = resident.paymentDetails;
+
+            if (!method) return 'Please select a payment method first.';
+            if (method === 'Cash') return null;
+
+            if (method === 'Debit/Credit Card') {
+                const digits = (d.cardNumber || '').replace(/\D/g, '');
+                if (digits.length < 12 || digits.length > 19) return 'Enter a valid card number.';
+                if (!(d.cardName || '').trim()) return 'Enter name on card.';
+                if (!/^\d{2}\/\d{2}$/.test((d.cardExpiry || '').trim())) return 'Enter expiry in MM/YY format.';
+                const cvv = (d.cardCvv || '').replace(/\D/g, '');
+                if (cvv.length < 3 || cvv.length > 4) return 'Enter a valid CVV.';
+                return null;
+            }
+
+            if (method === 'UPI') {
+                if (!(d.upiUtr || '').trim()) return 'Enter UPI UTR / Transaction ID.';
+                return null;
+            }
+
+            if (method === 'Net Banking') {
+                if (!(d.bankName || '').trim()) return 'Enter bank name.';
+                if (!(d.bankRef || '').trim()) return 'Enter reference number.';
+                return null;
+            }
+
+            if (method === 'QR') {
+                if (!(d.qrUtr || '').trim()) return 'Enter UTR / Transaction ID after payment.';
+                return null;
+            }
+
+            return null;
+        }
+
+        function payResident(index) {
+            const resident = residents[index];
+            const error = validatePaymentDetails(resident);
+            if (error) {
+                alert(error);
+                return;
+            }
+            resident.paid = true;
+            resident.paidOn = new Date().toISOString();
+
+            // Don't keep CVV after payment (basic hygiene for this demo)
+            if (resident.paymentDetails) resident.paymentDetails.cardCvv = '';
+            updateReport();
+        }
+
+        function markUnpaid(index) {
+            const resident = residents[index];
+            resident.paid = false;
+            resident.paidOn = null;
+            updateReport();
+        }
+        
+        function updateSummary() {
+            const totalRevenue = residents.reduce((sum, r) => sum + (r.paid ? r.bill : 0), 0);
+            const unpaidCount = residents.filter(r => !r.paid).length;
+            const highestBill = Math.max(...residents.map(r => r.bill), 0);
+            
+            document.getElementById('totalRevenue').textContent = totalRevenue;
+            document.getElementById('unpaidCount').textContent = unpaidCount;
+            document.getElementById('highestBill').textContent = highestBill;
+            
+            const warningList = document.getElementById('warningList');
+            const unpaidResidents = residents.filter(r => !r.paid);
+            
+            warningList.innerHTML = unpaidResidents.length > 0 
+                ? unpaidResidents.map(r => `<li>Flat ${r.flatNumber} - ${r.name}: ₹${r.bill}</li>`).join('')
+                : '<li>No pending payments</li>';
+        }
+    </script>
+</body>
+</html>
