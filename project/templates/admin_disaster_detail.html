@@ -26,6 +26,7 @@
     </div>
     <div class="actions" style="margin-top:10px;">
       <a href="{{ url_for('disasters_page') }}" style="text-decoration:none;"><button class="secondary" type="button"><i class="fas fa-arrow-left"></i> Back to Disasters</button></a>
+      <a href="{{ url_for('disaster_print_page', disaster_id=disaster.disaster_id) }}" target="_blank" style="text-decoration:none;"><button class="secondary" type="button"><i class="fas fa-print"></i> Print / PDF Report</button></a>
     </div>
   </section>
 
@@ -230,6 +231,49 @@
         </form>
       </section>
       {% endif %}
+
+      <!-- Resource Needs Tracker -->
+      <section class="panel">
+        <h3><i class="fas fa-boxes-stacked"></i> Resource Needs Tracker</h3>
+        {% if disaster.resource_needs %}
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+          {% for need in disaster.resource_needs %}
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:{% if need.status=='fulfilled' %}#f0fdf4{% else %}#fff5f5{% endif %};border:1px solid {% if need.status=='fulfilled' %}#bbf7d0{% else %}#fecaca{% endif %};">
+            <div style="flex:1;">
+              <strong>{{ need.item }}</strong>
+              <span style="font-size:12px;color:#6b7280;margin-left:8px;">x{{ need.quantity }}</span>
+              <span style="font-size:11px;color:#6b7280;margin-left:8px;">Priority: {{ need.priority | title }}</span>
+              {% if need.note %}<div style="font-size:12px;color:#6b7280;margin-top:3px;">{{ need.note }}</div>{% endif %}
+            </div>
+            {% if need.status == 'fulfilled' %}
+            <span style="font-size:12px;font-weight:700;color:#059669;"><i class="fas fa-check-circle"></i> Fulfilled</span>
+            {% else %}
+            <form method="post" action="{{ url_for('fulfill_resource_need', disaster_id=disaster.disaster_id, need_id=need.id) }}" style="margin:0;">
+              <button type="submit" style="padding:6px 12px;font-size:12px;"><i class="fas fa-check"></i> Fulfill</button>
+            </form>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:#64748b;text-align:center;font-size:13px;">No resource needs logged yet.</p>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('add_resource_need', disaster_id=disaster.disaster_id) }}" style="margin-top:12px;border-top:1px solid #e5e7eb;padding-top:12px;">
+          <label>Add Resource Need</label>
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+            <input name="item" type="text" placeholder="e.g. Water bottles, blankets" required />
+            <input name="quantity" type="number" min="1" value="1" placeholder="Qty" required />
+            <select name="priority">
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+          <input name="note" type="text" placeholder="Optional note" style="margin-bottom:8px;" />
+          <button type="submit"><i class="fas fa-plus"></i> Add Need</button>
+        </form>
+      </section>
     </div>
   </div>
 

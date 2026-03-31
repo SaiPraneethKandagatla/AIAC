@@ -660,6 +660,10 @@
           <span class="notif-badge">{{ pending_requests_count }}</span>
         {% endif %}
       </a>
+      <a href="{{ url_for('disasters_page') }}"><i class="fas fa-triangle-exclamation"></i> Disasters</a>
+      <a href="{{ url_for('analytics_page') }}"><i class="fas fa-chart-bar"></i> Analytics</a>
+      <a href="{{ url_for('missing_persons_page') }}"><i class="fas fa-person-circle-question"></i> Missing</a>
+      <a href="{{ url_for('broadcast_page') }}"><i class="fas fa-bullhorn"></i> Broadcast</a>
       <a href="{{ url_for('contacts_page') }}"><i class="fas fa-address-book"></i> Contacts</a>
       <a href="{{ url_for('admin_allocate_page') }}"><i class="fas fa-users-cog"></i> Allocation</a>
       <a href="{{ url_for('responders_page') }}"><i class="fas fa-user-shield"></i> Responders</a>

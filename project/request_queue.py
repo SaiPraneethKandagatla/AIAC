@@ -4,7 +4,7 @@ import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from relief_system import DisasterReliefSystem, safe_load_json, safe_write_json
 
@@ -31,6 +31,69 @@ def _data_file_path(filename: str) -> str:
 
 
 REQUESTS_FILE = _data_file_path("requests.json")
+
+
+AUTO_DISPATCH_BY_SUBTYPE: Dict[str, List[str]] = {
+    # Man-made
+    "building_fire": ["fire_force", "ambulance", "doctor", "police"],
+    "road_accident": ["ambulance", "doctor", "police"],
+    "train_derailment": ["ambulance", "doctor", "police", "fire_force"],
+    "industrial_accident": ["fire_force", "doctor", "ambulance", "police"],
+    "chemical_spill": ["fire_force", "doctor", "ambulance", "police"],
+    "gas_leak": ["fire_force", "ambulance", "police"],
+    "oil_spill": ["fire_force", "police"],
+    "explosion": ["fire_force", "ambulance", "doctor", "police"],
+    "nuclear_radiological": ["fire_force", "doctor", "ambulance", "police"],
+    "stampede": ["ambulance", "doctor", "police"],
+    # Natural
+    "earthquake": ["ambulance", "doctor", "fire_force", "police"],
+    "flood": ["diver", "ambulance", "doctor", "police"],
+    "cyclone": ["ambulance", "doctor", "police", "fire_force"],
+    "tsunami": ["diver", "ambulance", "doctor", "police"],
+    "landslide": ["fire_force", "ambulance", "doctor", "police"],
+    "wildfire": ["fire_force", "ambulance", "doctor", "police"],
+    "drought": ["doctor", "ambulance", "police"],
+}
+
+
+def _auto_decide_disaster_request(payload: Dict[str, Any]) -> Tuple[bool, str, List[str]]:
+    """Return (approved, note, responders_to_dispatch) for disaster report auto-triage."""
+    dtype = str(payload.get("disaster_type", "")).strip().lower()
+    subtype = str(payload.get("disaster_subtype", "")).strip().lower()
+    location = str(payload.get("location", "")).strip()
+    proof_image = str(payload.get("proof_image", "")).strip()
+
+    # Basic validation gate for direct reject.
+    if dtype not in {"natural", "man_made"}:
+        return False, "Auto-rejected: invalid disaster type", []
+    if not subtype:
+        return False, "Auto-rejected: disaster subtype is required", []
+    if not location:
+        return False, "Auto-rejected: location is required", []
+    if not proof_image:
+        return False, "Auto-rejected: proof photo missing", []
+
+    # Prefer strict automation for man-made incidents as requested.
+    roles = AUTO_DISPATCH_BY_SUBTYPE.get(subtype)
+    if not roles:
+        # Fallback role set by broad category.
+        roles = ["ambulance", "doctor", "police"] if dtype == "man_made" else ["ambulance", "doctor"]
+
+    return True, "Auto-approved by smart triage", roles
+
+
+def _pick_free_responders_by_roles(system: DisasterReliefSystem, roles: List[str]) -> List[str]:
+    """Pick one free responder per requested role (if available)."""
+    chosen: List[str] = []
+    seen = set()
+    for role in roles:
+        if role in seen:
+            continue
+        seen.add(role)
+        free = [r for r in system.responders if r.role == role and r.status == "free"]
+        if free:
+            chosen.append(free[0].responder_id)
+    return chosen
 
 
 def _load_requests() -> List[Dict[str, Any]]:
@@ -102,6 +165,29 @@ def create_request(*, kind: str, payload: Dict[str, Any], requested_by: str | No
     items = _load_requests()
     items.append(req)
     _save_requests(items)
+
+    # Auto-triage disaster reports: directly approve/reject and dispatch teams.
+    if str(kind) == "disaster_report":
+        approved, auto_note, roles = _auto_decide_disaster_request(payload or {})
+        if not approved:
+            reject_request(request_id=rid, note=auto_note)
+            return get_request(rid) or req
+
+        try:
+            system = DisasterReliefSystem()
+            selected_responders = _pick_free_responders_by_roles(system, roles)
+            summary = apply_request(system, req, selected_responders=selected_responders)
+            decision_note = auto_note
+            if selected_responders:
+                decision_note += f". Auto-dispatched {len(selected_responders)} team(s)."
+            else:
+                decision_note += ". No free responders available right now."
+            approve_request(request_id=rid, note=decision_note)
+            _update_request(rid, {"decision_summary": summary})
+        except Exception as exc:
+            mark_request_error(request_id=rid, error=f"Auto-triage failed: {exc}")
+            reject_request(request_id=rid, note="Auto-rejected: processing error")
+
     return req
 
 

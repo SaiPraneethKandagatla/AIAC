@@ -328,6 +328,7 @@ class ActiveDisaster:
     updates: List[Dict[str, str]] = None  # List of status updates with timestamps
     request_id: Optional[str] = None  # Link to original request
     proof_image: Optional[str] = None  # Static path for uploaded proof image
+    resource_needs: List[Dict] = None  # Resource needs tracker
 
     def __post_init__(self) -> None:
         if self.assigned_responders is None:
@@ -336,6 +337,8 @@ class ActiveDisaster:
             self.assigned_camps = []
         if self.updates is None:
             self.updates = []
+        if self.resource_needs is None:
+            self.resource_needs = []
         self.status = str(self.status or "ongoing").lower()
         if self.status not in DISASTER_STATUSES:
             self.status = "ongoing"
@@ -369,6 +372,7 @@ class ActiveDisaster:
             "updates": list(self.updates or []),
             "request_id": self.request_id,
             "proof_image": self.proof_image,
+            "resource_needs": list(self.resource_needs or []),
         }
 
     @classmethod
@@ -392,6 +396,7 @@ class ActiveDisaster:
             updates=list(data.get("updates", []) or []),
             request_id=data.get("request_id"),
             proof_image=data.get("proof_image"),
+            resource_needs=list(data.get("resource_needs", []) or []),
         )
 
 
@@ -1870,3 +1875,169 @@ class DisasterReliefSystem:
             "total_responders": len(responder_details),
             "total_camps": len(camp_details),
         }
+
+    # ----------------------------- Broadcast Alert -----------------------------
+    def get_broadcast_alert(self) -> Optional[Dict[str, str]]:
+        """Return current broadcast alert or None."""
+        alert = self.settings.get("broadcast_alert")
+        return alert if isinstance(alert, dict) and alert.get("message") else None
+
+    def set_broadcast_alert(self, message: str, set_by: str = "Admin", severity: str = "info") -> None:
+        """Post a broadcast alert visible on HelpDesk."""
+        from datetime import datetime
+        self.settings["broadcast_alert"] = {
+            "message": str(message).strip(),
+            "severity": severity,
+            "set_by": set_by,
+            "set_at": datetime.now().isoformat(),
+        }
+        self.save_data()
+
+    def clear_broadcast_alert(self) -> None:
+        """Remove the broadcast alert."""
+        self.settings.pop("broadcast_alert", None)
+        self.save_data()
+
+    # ----------------------------- Camp Closure -----------------------------
+    def close_camp(self, camp_id: str) -> ReliefCamp:
+        """Manually close a camp."""
+        camp = self.camp_by_id(camp_id)
+        if not camp:
+            raise ValueError("Camp not found")
+        camp.status = "closed"
+        self.save_data()
+        return camp
+
+    def reopen_camp(self, camp_id: str) -> ReliefCamp:
+        """Reopen a closed camp."""
+        camp = self.camp_by_id(camp_id)
+        if not camp:
+            raise ValueError("Camp not found")
+        camp.status = "active"
+        self.save_data()
+        return camp
+
+    def auto_close_expired_camps(self) -> int:
+        """Close all camps that are past their deadline. Returns count closed."""
+        count = 0
+        for camp in self.camps:
+            if camp.status == "active" and camp.is_expired():
+                camp.status = "closed"
+                count += 1
+        if count:
+            self.save_data()
+        return count
+
+    # ----------------------------- Missing Persons -----------------------------
+    MISSING_FILE = _data_file_path("missing_persons.json")
+
+    def _load_missing(self) -> list:
+        return safe_load_json(self.MISSING_FILE, default=[])
+
+    def _save_missing(self, records: list) -> None:
+        safe_write_json(self.MISSING_FILE, records)
+
+    def report_missing_person(
+        self,
+        *,
+        name: str,
+        age: int = None,
+        description: str = "",
+        last_seen: str = "",
+        reported_by: str = "",
+        photo: str = "",
+    ) -> Dict[str, object]:
+        """Register a missing person report."""
+        import uuid
+        from datetime import datetime
+        records = self._load_missing()
+        record = {
+            "id": str(uuid.uuid4()),
+            "name": str(name).strip(),
+            "age": int(age) if age is not None else None,
+            "description": str(description).strip(),
+            "last_seen": str(last_seen).strip(),
+            "reported_by": str(reported_by).strip(),
+            "photo": str(photo).strip() or None,
+            "status": "missing",
+            "reported_at": datetime.now().isoformat(),
+            "found_at": None,
+            "found_note": None,
+        }
+        records.append(record)
+        self._save_missing(records)
+        return record
+
+    def search_missing_persons(self, query: str) -> list:
+        """Search missing persons by name or last seen location (case-insensitive)."""
+        q = str(query).strip().lower()
+        records = self._load_missing()
+        if not q:
+            return records
+        return [
+            r for r in records
+            if q in r.get("name", "").lower()
+            or q in r.get("last_seen", "").lower()
+        ]
+
+    def mark_person_found(self, record_id: str, found_note: str = None) -> Dict[str, object]:
+        """Mark a missing person as found."""
+        from datetime import datetime
+        records = self._load_missing()
+        result = None
+        for r in records:
+            if r.get("id") == record_id:
+                r["status"] = "found"
+                r["found_at"] = datetime.now().isoformat()
+                r["found_note"] = found_note
+                result = r
+                break
+        self._save_missing(records)
+        return result
+
+    def get_all_missing_persons(self) -> list:
+        return self._load_missing()
+
+    # ----------------------------- Resource Needs Tracker -----------------------------
+    def add_resource_need(
+        self,
+        *,
+        disaster_id: str,
+        item: str,
+        quantity: int = 1,
+        priority: str = "normal",
+        note: str = "",
+    ) -> "ActiveDisaster":
+        """Add an outstanding resource need to a disaster."""
+        from datetime import datetime
+        disaster = self.disaster_by_id(disaster_id)
+        if not disaster:
+            raise ValueError("Disaster not found")
+        if not hasattr(disaster, "resource_needs") or disaster.resource_needs is None:
+            disaster.resource_needs = []
+        disaster.resource_needs.append({
+            "id": __import__("uuid").uuid4().hex[:8],
+            "item": str(item).strip(),
+            "quantity": int(quantity),
+            "priority": str(priority).strip(),
+            "note": str(note).strip(),
+            "status": "needed",
+            "added_at": datetime.now().isoformat(),
+            "fulfilled_at": None,
+        })
+        self.save_data()
+        return disaster
+
+    def fulfill_resource_need(self, *, disaster_id: str, need_id: str) -> "ActiveDisaster":
+        """Mark a resource need as fulfilled."""
+        from datetime import datetime
+        disaster = self.disaster_by_id(disaster_id)
+        if not disaster:
+            raise ValueError("Disaster not found")
+        for need in (disaster.resource_needs or []):
+            if need.get("id") == need_id:
+                need["status"] = "fulfilled"
+                need["fulfilled_at"] = datetime.now().isoformat()
+                break
+        self.save_data()
+        return disaster

@@ -36,6 +36,7 @@ app.secret_key = "aiac-relief-system"  # simple secret for local demo
 
 ALLOWED_PROOF_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 PROOF_UPLOAD_FOLDER = os.path.join(app.static_folder or "static", "disaster_proofs")
+MISSING_UPLOAD_FOLDER = os.path.join(app.static_folder or "static", "missing_persons")
 
 
 def _is_allowed_proof_file(filename: str) -> bool:
@@ -50,8 +51,11 @@ def _is_allowed_proof_file(filename: str) -> bool:
 def _inject_globals():
     # Used by templates (navigation + setup locking UI)
     system = DisasterReliefSystem()
+    alert = system.get_broadcast_alert()
     return {
         "setup_locked": bool(system.get_disaster_type()),
+        "get_broadcast_alert": lambda: alert,
+        "broadcast_alert": alert,
     }
 
 
@@ -143,7 +147,7 @@ def setup_save():
                 "proof_image": proof_image,
             },
         )
-        flash("Disaster report submitted. Admin will verify and dispatch teams.", "ok")
+        flash("Disaster report submitted. Smart triage will auto-verify and dispatch teams immediately.", "ok")
         return redirect(url_for("dashboard"))
     except Exception as exc:
         flash(f"Could not submit disaster report: {exc}", "err")
@@ -343,6 +347,96 @@ def victim_search_page():
     results = system.search_victims(query) if query else []
     return render_template(
         "victim_search.html",
+        query=query,
+        results=results,
+    )
+
+
+# ----------------------------- Live Disaster Status (Public) -----------------------------
+
+@app.get("/status")
+def live_status():
+    system = _system()
+    active_disasters = system.get_active_disasters()
+    camps = system.camps
+    responders = system.responders
+    alert = system.get_broadcast_alert()
+    # Camp availability: those with space
+    available_camps = [c for c in camps if getattr(c, "status", "active") == "active"]
+    return render_template(
+        "public_status.html",
+        active_disasters=active_disasters,
+        available_camps=available_camps,
+        responders=responders,
+        alert=alert,
+    )
+
+
+# ----------------------------- Missing Person Report/Search (Public) -----------------------------
+
+@app.get("/missing/report")
+def missing_report_page():
+    system = _system()
+    if not system.get_disaster_type():
+        return redirect(url_for("setup"))
+    return render_template("missing_person_form.html")
+
+
+@app.post("/missing/report")
+def missing_report_submit():
+    system = _system()
+    if not system.get_disaster_type():
+        return redirect(url_for("setup"))
+    try:
+        name = request.form.get("name", "").strip()
+        age_raw = request.form.get("age", "").strip()
+        age = int(age_raw) if age_raw.isdigit() else None
+        description = request.form.get("description", "").strip()
+        last_seen = request.form.get("last_seen", "").strip()
+        contact = request.form.get("contact", "").strip()
+        photo_file = request.files.get("photo")
+        photo_path = None
+
+        if not name:
+            raise ValueError("Name of missing person is required")
+        if not contact:
+            raise ValueError("Contact information is required")
+
+        if photo_file and photo_file.filename:
+            if not _is_allowed_proof_file(photo_file.filename):
+                raise ValueError("Photo must be PNG, JPG, JPEG, or WEBP")
+            os.makedirs(MISSING_UPLOAD_FOLDER, exist_ok=True)
+            safe_name = secure_filename(photo_file.filename)
+            ext = safe_name.rsplit(".", 1)[1].lower()
+            saved_name = f"missing_{uuid.uuid4().hex}.{ext}"
+            save_path = os.path.join(MISSING_UPLOAD_FOLDER, saved_name)
+            photo_file.save(save_path)
+            photo_path = f"missing_persons/{saved_name}"
+
+        system.report_missing_person(
+            name=name,
+            age=age,
+            description=description,
+            last_seen=last_seen,
+            reported_by=contact,
+            photo=photo_path,
+        )
+        flash("Missing person report submitted. Admin has been notified.", "ok")
+        return redirect(url_for("dashboard"))
+    except Exception as exc:
+        flash(f"Could not submit report: {exc}", "err")
+        return redirect(url_for("missing_report_page"))
+
+
+@app.get("/missing/search")
+def missing_search_page():
+    query = request.args.get("q", "").strip()
+    results = []
+    if query:
+        system = _system()
+        results = system.search_missing_persons(query=query)
+    return render_template(
+        "missing_person_search.html",
         query=query,
         results=results,
     )

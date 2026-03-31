@@ -530,6 +530,8 @@
 
     <nav aria-label="Navigation">
       <a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> HelpDesk</a>
+      <a href="{{ url_for('live_status') }}"><i class="fas fa-satellite-dish"></i> Live Status</a>
+      <a href="{{ url_for('missing_report_page') }}"><i class="fas fa-person-circle-question"></i> Missing Person</a>
       {% if not setup_locked %}
         <a href="{{ url_for('setup') }}"><i class="fas fa-cog"></i> Setup</a>
       {% endif %}
@@ -537,6 +539,15 @@
   </header>
 
   <main>
+    {% if broadcast_alert %}
+    <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;border-radius:16px;padding:18px 20px;display:flex;align-items:flex-start;gap:14px;">
+      <i class="fas fa-bullhorn" style="color:#d97706;font-size:20px;margin-top:2px;flex-shrink:0;"></i>
+      <div>
+        <strong style="font-size:14px;color:#92400e;">Official Alert</strong>
+        <p style="margin:4px 0 0;color:#78350f;font-size:14px;">{{ broadcast_alert.message }}</p>
+      </div>
+    </div>
+    {% endif %}
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       <section class="panel flash" aria-label="Messages">

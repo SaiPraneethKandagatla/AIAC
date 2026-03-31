@@ -17,9 +17,11 @@ Data is shared via the same JSON files used by the dashboard app.
 
 from __future__ import annotations
 
+import csv
+import io
 from datetime import datetime
 from functools import wraps
-from flask import Flask, redirect, render_template, request, url_for, flash, session
+from flask import Flask, redirect, render_template, request, url_for, flash, session, Response
 
 from relief_system import DisasterReliefSystem
 from request_queue import (
@@ -923,6 +925,262 @@ app.add_url_rule(
     view_func=assign_camp_to_disaster,
     methods=["POST"],
 )
+
+
+# ----------------------------- Broadcast Alert -----------------------------
+
+@app.get("/broadcast")
+@login_required
+def broadcast_page():
+    system = _system()
+    alert = system.get_broadcast_alert()
+    return render_template("admin_broadcast.html", alert=alert)
+
+
+@app.post("/broadcast")
+@login_required
+def broadcast_save():
+    system = _system()
+    try:
+        message = request.form.get("message", "").strip()
+        if not message:
+            raise ValueError("Alert message cannot be empty")
+        system.set_broadcast_alert(message=message, set_by="Admin")
+        flash("Broadcast alert set. All users will see this message.", "ok")
+    except Exception as exc:
+        flash(f"Could not set alert: {exc}", "err")
+    return redirect(url_for("broadcast_page"))
+
+
+@app.post("/broadcast/clear")
+@login_required
+def broadcast_clear():
+    system = _system()
+    try:
+        system.clear_broadcast_alert()
+        flash("Broadcast alert cleared.", "ok")
+    except Exception as exc:
+        flash(f"Could not clear alert: {exc}", "err")
+    return redirect(url_for("broadcast_page"))
+
+
+# ----------------------------- CSV Export -----------------------------
+
+@app.get("/export/camps.csv")
+@login_required
+def export_camps_csv():
+    system = _system()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Camp ID", "Location", "Max Capacity", "Current Occupancy", "Food Packets", "Medical Kits", "Status", "Deadline"])
+    for camp in system.camps:
+        writer.writerow([
+            camp.camp_id,
+            camp.location,
+            camp.max_capacity,
+            camp.current_occupancy,
+            camp.available_food_packets,
+            camp.available_medical_kits,
+            getattr(camp, "status", "active"),
+            getattr(camp, "deadline", ""),
+        ])
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=camps.csv"},
+    )
+
+
+@app.get("/export/victims.csv")
+@login_required
+def export_victims_csv():
+    system = _system()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Victim ID", "Name", "Age", "Address", "Health Condition", "Injury", "Assigned Camp", "Doctor"])
+    for v in system.victims:
+        writer.writerow([
+            v.victim_id,
+            v.name,
+            v.age,
+            v.address,
+            v.health_condition,
+            getattr(v, "injury", ""),
+            v.assigned_camp,
+            getattr(v, "doctor_name", ""),
+        ])
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=victims.csv"},
+    )
+
+
+@app.get("/export/responders.csv")
+@login_required
+def export_responders_csv():
+    system = _system()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Responder ID", "Name", "Role", "Status", "Current Task"])
+    for r in system.responders:
+        writer.writerow([
+            r.responder_id,
+            r.name,
+            r.role,
+            r.status,
+            getattr(r, "current_task", ""),
+        ])
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=responders.csv"},
+    )
+
+
+# ----------------------------- Analytics -----------------------------
+
+@app.get("/analytics")
+@login_required
+def analytics_page():
+    system = _system()
+    camps = system.camps
+    victims = system.victims
+    responders = system.responders
+
+    # Camp occupancy data for chart
+    camp_labels = [c.camp_id for c in camps]
+    camp_occupancy = [c.current_occupancy for c in camps]
+    camp_capacity = [c.max_capacity for c in camps]
+
+    # Victim health distribution
+    health_counts = {}
+    for v in victims:
+        h = v.health_condition or "unknown"
+        health_counts[h] = health_counts.get(h, 0) + 1
+
+    # Responder status distribution
+    responder_status = {}
+    for r in responders:
+        s = r.status or "unknown"
+        responder_status[s] = responder_status.get(s, 0) + 1
+
+    # Role distribution
+    role_counts = {}
+    for r in responders:
+        role_counts[r.role] = role_counts.get(r.role, 0) + 1
+
+    return render_template(
+        "admin_analytics.html",
+        camp_labels=camp_labels,
+        camp_occupancy=camp_occupancy,
+        camp_capacity=camp_capacity,
+        health_counts=health_counts,
+        responder_status=responder_status,
+        role_counts=role_counts,
+        total_victims=len(victims),
+        total_camps=len(camps),
+        total_responders=len(responders),
+    )
+
+
+# ----------------------------- Missing Persons -----------------------------
+
+@app.get("/missing-persons")
+@login_required
+def missing_persons_page():
+    system = _system()
+    all_missing = system.get_all_missing_persons()
+    return render_template("admin_missing_persons.html", missing_persons=all_missing)
+
+
+@app.post("/missing-persons/<record_id>/found")
+@login_required
+def mark_person_found(record_id):
+    system = _system()
+    try:
+        note = request.form.get("note", "").strip() or None
+        system.mark_person_found(record_id=record_id, found_note=note)
+        flash("Person marked as found.", "ok")
+    except Exception as exc:
+        flash(f"Could not update record: {exc}", "err")
+    return redirect(url_for("missing_persons_page"))
+
+
+@app.post("/missing-persons/<record_id>/delete")
+@login_required
+def delete_missing_record(record_id):
+    system = _system()
+    try:
+        records = system.get_all_missing_persons()
+        updated = [r for r in records if r.get("id") != record_id]
+        system._save_missing(updated)
+        flash("Missing person record deleted.", "ok")
+    except Exception as exc:
+        flash(f"Could not delete record: {exc}", "err")
+    return redirect(url_for("missing_persons_page"))
+
+
+# ----------------------------- Resource Needs Tracker -----------------------------
+
+@app.post("/disasters/<disaster_id>/resource-needs")
+@login_required
+def add_resource_need(disaster_id):
+    system = _system()
+    try:
+        item = request.form.get("item", "").strip()
+        quantity = int(request.form.get("quantity", "1"))
+        priority = request.form.get("priority", "normal").strip()
+        note = request.form.get("note", "").strip() or None
+        if not item:
+            raise ValueError("Resource item name is required")
+        system.add_resource_need(
+            disaster_id=disaster_id,
+            item=item,
+            quantity=quantity,
+            priority=priority,
+            note=note,
+        )
+        flash(f"Resource need '{item}' added.", "ok")
+    except Exception as exc:
+        flash(f"Could not add resource need: {exc}", "err")
+    return redirect(url_for("disaster_detail_page", disaster_id=disaster_id))
+
+
+@app.post("/disasters/<disaster_id>/resource-needs/<need_id>/fulfill")
+@login_required
+def fulfill_resource_need(disaster_id, need_id):
+    system = _system()
+    try:
+        system.fulfill_resource_need(disaster_id=disaster_id, need_id=need_id)
+        flash("Resource need marked as fulfilled.", "ok")
+    except Exception as exc:
+        flash(f"Could not update resource need: {exc}", "err")
+    return redirect(url_for("disaster_detail_page", disaster_id=disaster_id))
+
+
+# ----------------------------- Disaster Print/PDF -----------------------------
+
+@app.get("/disasters/<disaster_id>/print")
+@login_required
+def disaster_print_page(disaster_id):
+    system = _system()
+    try:
+        summary = system.get_disaster_summary(disaster_id)
+        disaster = system.disaster_by_id(disaster_id)
+        now = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+        return render_template(
+            "disaster_print.html",
+            disaster=disaster,
+            summary=summary,
+            print_time=now,
+        )
+    except Exception as exc:
+        flash(f"Error loading disaster for print: {exc}", "err")
+        return redirect(url_for("disasters_page"))
 
 
 def main() -> None:
