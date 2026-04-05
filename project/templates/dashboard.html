@@ -118,11 +118,24 @@
       }
     }
 
-    typeEl.addEventListener('change', setSubtypeOptions);
-    setSubtypeOptions();
+    function toggleNaturalCampSection() {
+      const dtype = (typeEl.value || '').toLowerCase();
+      const naturalCampSection = document.getElementById('natural-camps-section');
+      if (!naturalCampSection) return;
+      naturalCampSection.style.display = dtype === 'natural' ? 'block' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      typeEl.addEventListener('change', () => {
+        setSubtypeOptions();
+        toggleNaturalCampSection();
+      });
+      setSubtypeOptions();
+      toggleNaturalCampSection();
+    });
   </script>
 
-  <section class="panel">
+  <section class="panel" id="natural-camps-section" style="display:{% if report.disaster_type == 'natural' %}block{% else %}none{% endif %};">
     <h2>Emergency Contacts</h2>
     <div class="hint">Use these numbers for immediate help. For non-urgent coordination, you can submit a Help Request (Admin will review).</div>
 
